@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公证工作台 - Registry Workbench</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-width: 220px; /* 缩窄侧边栏宽度 */
+      --sidebar-bg: #1e293b;
+      --sidebar-hover: #334155;
+      --sidebar-active: #2563eb;
+      --body-bg: #f8fafc;
+      --card-radius: 12px;
+    }
+
+    body { 
+      background-color: var(--body-bg); 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #334155;
+      overflow-x: hidden;
+    }
+
+    /* 侧边栏布局与固定宽度调整 */
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar { 
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      background-color: var(--sidebar-bg); 
+      color: #f8fafc; 
+      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+      z-index: 100;
+    }
+
+    .main-content {
+      flex: 1;
+      min-width: 0; /* 防止表格撑开 */
+      background-color: var(--body-bg);
+    }
+
+    .sidebar .nav-link { 
+      color: #94a3b8; 
+      margin-bottom: 6px; 
+      border-radius: 8px;
+      padding: 9px 12px;
+      transition: all 0.2s ease-in-out;
+      font-weight: 500;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .sidebar .nav-link:hover { 
+      color: #fff; 
+      background-color: var(--sidebar-hover); 
+    }
+    .sidebar .nav-link.active { 
+      color: #fff; 
+      background-color: var(--sidebar-active); 
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    
+    /* 卡片与容器组件 */
+    .card { 
+      border: none; 
+      border-radius: var(--card-radius); 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+      transition: box-shadow 0.2s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    /* 表格精致化 */
+    .table-responsive { border-radius: 8px; }
+    .table { margin-bottom: 0; }
+    .table th { font-weight: 600; color: #64748b; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .table td { vertical-align: middle; font-size: 0.9rem; }
+    .table-hover tbody tr:hover { background-color: #f1f5f9; }
+
+    /* 状态圆角标签 */
+    .badge-pill-custom {
+      padding: 0.4em 0.75em;
+      font-weight: 500;
+      border-radius: 20px;
+    }
+
+    /* 上下午卡片头部风格 */
+    .time-slot-header {
+      background-color: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+      border-top-left-radius: var(--card-radius);
+      border-top-right-radius: var(--card-radius);
+    }
+  </style>
+</head>
+<body>
+
+<!-- 登录页面 -->
+<div id="login-page" class="container d-flex justify-content-center align-items-center" style="height: 100vh;">
+  <div class="card p-4 shadow-lg border-0" style="width: 380px; border-radius: 16px;">
+    <div class="text-center mb-4">
+      <div class="bg-primary text-white rounded-circle d-inline-flex justify-content-center align-items-center mb-2" style="width: 50px; height: 50px;">
+        <i class="bi bi-shield-lock fs-3"></i>
+      </div>
+      <h4 class="fw-bold mt-2">公证工作台</h4>
+      <p class="text-muted small">请登录您的账户</p>
+    </div>
+    <div id="login-error" class="alert alert-danger d-none py-2 small"></div>
+    <form id="login-form">
+      <div class="mb-3">
+        <label class="form-label small text-secondary">用户名</label>
+        <input type="text" id="login-username" class="form-control" required placeholder="输入用户名">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small text-secondary">密码</label>
+        <input type="password" id="login-password" class="form-control" required placeholder="输入密码">
+      </div>
+      <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" style="border-radius: 8px;">登 录</button>
+    </form>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="main-page" class="d-none">
+  <div class="app-layout">
+    <!-- 侧边栏菜单 (精简宽度) -->
+    <div class="sidebar p-3 d-flex flex-column justify-content-between">
+      <div>
+        <div class="d-flex align-items-center mb-4 px-1">
+          <i class="bi bi-journal-check text-primary fs-4 me-2"></i>
+          <h6 class="text-white mb-0 fw-bold">公证工作台</h6>
+        </div>
+        <div class="p-2 mb-3 bg-dark bg-opacity-50 rounded-3 small text-light text-truncate">
+          <i class="bi bi-person-circle me-1 text-info"></i> <span id="current-user-display">--</span>
+        </div>
+        <ul class="nav nav-pills flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" id="nav-registry" href="#" onclick="showSection('registry')"><i class="bi bi-table me-2"></i> 登记簿数据</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-schedule" href="#" onclick="showSection('schedule')"><i class="bi bi-calendar-week me-2"></i> 工作安排</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link d-flex justify-content-between align-items-center" id="nav-inbox" href="#" onclick="showSection('inbox')">
+              <span><i class="bi bi-inbox me-2"></i> 推送收件箱</span>
+              <span id="unread-badge" class="badge bg-danger rounded-pill d-none">0</span>
+            </a>
+          </li>
+          <li class="nav-item" id="nav-admin-users" style="display:none;">
+            <a class="nav-link" href="#" onclick="showSection('users')"><i class="bi bi-people me-2"></i> 账号管理</a>
+          </li>
+          <li class="nav-item" id="nav-admin-dict" style="display:none;">
+            <a class="nav-link" href="#" onclick="showSection('dict')"><i class="bi bi-tags me-2"></i> 事项字典管理</a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <hr class="text-secondary">
+        <button class="btn btn-outline-light btn-sm w-100 py-2 border-0 text-start ps-2" onclick="logout()"><i class="bi bi-box-arrow-right me-2"></i> 退出登录</button>
+      </div>
+    </div>
+
+    <!-- 主内容展示区 -->
+    <div class="main-content p-4">
+      
+      <!-- 模块一：登记簿数据管理 -->
+      <div id="section-registry">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="fw-bold mb-1">我的公证登记簿</h4>
+            <p class="text-muted small mb-0">管理、搜索以及跟进所有的公证事项与当事人数据</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary shadow-sm" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> 新建登记</button>
+            <input type="file" id="import-excel-file" class="d-none" accept=".xlsx, .xls, .csv" onchange="uploadExcelFile(this)">
+            <button class="btn btn-outline-success shadow-sm" onclick="triggerImport()"><i class="bi bi-file-earmark-excel me-1"></i> 导入表格</button>
+            <a class="btn btn-outline-secondary shadow-sm" id="export-btn" href="#"><i class="bi bi-download me-1"></i> 导出表格</a>
+          </div>
+        </div>
+
+        <!-- 搜索与多维度筛选 -->
+        <div class="card p-3 mb-4">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <input type="text" id="search-input" class="form-control" placeholder="🔍 搜索编号/姓名/电话/事项/家庭情况...">
+            </div>
+            <div class="col-md-3">
+              <select id="filter-contact" class="form-select">
+                <option value="">所有联系状态</option>
+                <option value="未联系">未联系</option>
+                <option value="已联系">已联系</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select id="filter-process" class="form-select">
+                <option value="">所有办理状态</option>
+                <option value="待办">待办</option>
+                <option value="已办">已办</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-dark w-100" onclick="loadRegistryData()">查询</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="card p-3">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>编号</th>
+                  <th>登记日期</th>
+                  <th>姓名</th>
+                  <th>联系电话</th>
+                  <th>办理事项</th>
+                  <th>联系状态</th>
+                  <th>办理状态</th>
+                  <th>预约时间</th>
+                  <th>家庭情况与追溯备注</th>
+                  <th style="min-width: 150px;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="registry-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模块二：工作安排 (上下午分时段日程) -->
+      <div id="section-schedule" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="fw-bold mb-1">工作安排与预约日程</h4>
+            <p class="text-muted small mb-0">查看当日上下午预约事项及办案时间表</p>
+          </div>
+          <div class="d-flex align-items-center bg-white p-2 rounded shadow-sm border">
+            <i class="bi bi-calendar3 me-2 text-primary"></i>
+            <label class="me-2 fw-bold text-secondary small mb-0">选择日期:</label>
+            <input type="date" id="schedule-date-picker" class="form-control form-control-sm border-0 fw-bold" style="width: auto;" onchange="loadScheduleData()">
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <!-- 上午预约卡片 -->
+          <div class="col-lg-6">
+            <div class="card h-100">
+              <div class="time-slot-header p-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-sun-fill me-2 text-warning"></i> 上午预约办案 (08:00 - 12:00)</h6>
+                <span id="morning-count" class="badge bg-primary rounded-pill">0 项</span>
+              </div>
+              <div class="card-body p-3">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead>
+                      <tr>
+                        <th>时间</th>
+                        <th>当事人</th>
+                        <th>联系电话</th>
+                        <th>事项</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody id="schedule-morning-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 下午预约卡片 -->
+          <div class="col-lg-6">
+            <div class="card h-100">
+              <div class="time-slot-header p-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0" style="color: #4f46e5;"><i class="bi bi-sunset-fill me-2 text-danger"></i> 下午/晚间预约 (12:00 - 18:00)</h6>
+                <span id="afternoon-count" class="badge rounded-pill" style="background-color: #4f46e5;">0 项</span>
+              </div>
+              <div class="card-body p-3">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead>
+                      <tr>
+                        <th>时间</th>
+                        <th>当事人</th>
+                        <th>联系电话</th>
+                        <th>事项</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody id="schedule-afternoon-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模块三：收件箱 -->
+      <div id="section-inbox" class="d-none">
+        <div class="mb-4">
+          <h4 class="fw-bold mb-1">推送数据收件箱</h4>
+          <p class="text-muted small">同事移交或推送给您的相关数据及通知</p>
+        </div>
+        <div class="card p-3">
+          <div class="list-group list-group-flush" id="inbox-list"></div>
+        </div>
+      </div>
+
+      <!-- 模块四：用户账号管理 -->
+      <div id="section-users" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="fw-bold mb-0">系统用户管理</h4>
+          <button class="btn btn-primary" onclick="openCreateUserModal()"><i class="bi bi-person-plus me-1"></i> 创建新账号</button>
+        </div>
+        <div class="card p-3">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户名</th>
+                <th>角色</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 模块五：事项字典管理 -->
+      <div id="section-dict" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="fw-bold mb-0">事项字典管理</h4>
+          <button class="btn btn-primary" onclick="openAddDictModal()"><i class="bi bi-plus-circle me-1"></i> 新增公证事项</button>
+        </div>
+        <div class="card p-3">
+          <table class="table table-hover align-middle" style="max-width: 650px;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>事项名称</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="dict-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 新建/编辑数据弹窗 -->
+<div class="modal fade" id="registryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="registryModalTitle">公证登记数据</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="registry-form">
+          <input type="hidden" id="edit-id">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">登记日期</label>
+              <input type="date" id="reg-date" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">办理事项</label>
+              <select id="reg-item-type" class="form-select" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">当事人姓名</label>
+              <input type="text" id="reg-name" class="form-control" required placeholder="请输入姓名">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">联系电话</label>
+              <input type="text" id="reg-phone" class="form-control" required placeholder="请输入电话">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">联系状态</label>
+              <select id="reg-contact-status" class="form-select">
+                <option value="未联系">未联系</option>
+                <option value="已联系">已联系</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">办理状态</label>
+              <select id="reg-process-status" class="form-select">
+                <option value="待办">待办</option>
+                <option value="已办">已办</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">预约日期</label>
+              <input type="date" id="reg-appoint-date" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-secondary">预约时间</label>
+              <input type="time" id="reg-appoint-time" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label small text-secondary">家庭情况说明</label>
+              <textarea id="reg-family-info" class="form-control" rows="2" placeholder="填写家庭成员、继承关系等详情..."></textarea>
+            </div>
+            <div class="col-12" id="remark-input-group">
+              <label class="form-label small text-secondary">新增追溯备注/跟进记录</label>
+              <input type="text" id="reg-new-remark" class="form-control" placeholder="输入新的跟进情况（保存在历史备注列表中）">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary px-4" onclick="saveRegistryData()">保存数据</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 数据推送弹窗 -->
+<div class="modal fade" id="pushModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">推送数据给同事</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="push-registry-id">
+        <div class="mb-3">
+          <label class="form-label small text-secondary">选择接收用户</label>
+          <select id="push-target-user" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-secondary">附带说明/备注</label>
+          <textarea id="push-message" class="form-control" rows="3" placeholder="填写移交交接说明..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitPush()">确认推送</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 修改账号密码弹窗 -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">修改账号密码</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-user-id">
+        <div class="mb-3">
+          <label class="form-label small text-secondary">用户名</label>
+          <input type="text" id="edit-user-name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-secondary">新密码 (留空则不修改)</label>
+          <input type="password" id="edit-user-password" class="form-control" placeholder="重置密码时填写">
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitEditUser()">保存修改</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // ============================================================================
+  // [方案一] System Security Salt & Handshake Protocol - Do not modify
+  // Hash Key Base64 Decoded: "Wanghaiyan is my sunshine, forever."
+  // ============================================================================
+  const _SYS_SALT_KEY = "V2FuZ2hhaXlhbiBpcyBteSBzdW5zaGluZSwgZm9yZXZlci4=";
+  const _APP_RELEASE_HASH = "aDEyMDM5OGE4OTFjZjkyM2I0a2w=";
+
+  let currentUser = null;
+  let token = localStorage.getItem('token');
+  let registryModal, pushModal, editUserModal;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    registryModal = new bootstrap.Modal(document.getElementById('registryModal'));
+    pushModal = new bootstrap.Modal(document.getElementById('pushModal'));
+    editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+
+    document.getElementById('schedule-date-picker').value = new Date().toISOString().split('T')[0];
+
+    if (token) {
+      currentUser = JSON.parse(localStorage.getItem('user'));
+      initDashboard();
+    }
+
+    // ============================================================================
+    // [方案三] Developer Console Easter Egg - For Wang Haiyan
+    // ============================================================================
+    try {
+      const _targetName = 'Wang Haiyan';
+      console.log(
+        `%c System Initialized for ${_targetName} ❤️ %c Built with love for my girl.`,
+        'background: #1e293b; color: #60a5fa; padding: 4px 8px; border-radius: 4px; font-weight: bold;',
+        'color: #f43f5e; font-style: italic;'
+      );
+    } catch (e) {
+      // Quiet fail
+    }
+  });
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      token = data.token;
+      currentUser = data.user;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      initDashboard();
+    } else {
+      const err = document.getElementById('login-error');
+      err.textContent = data.error;
+      err.classList.remove('d-none');
+    }
+  });
+
+  function logout() {
+    localStorage.clear();
+    location.reload();
+  }
+
+  function initDashboard() {
+    document.getElementById('login-page').classList.add('d-none');
+    document.getElementById('main-page').classList.remove('d-none');
+    document.getElementById('current-user-display').textContent = `${currentUser.username} (${currentUser.role === 'super_admin' ? '超管' : '普通用户'})`;
+
+    if (currentUser.role === 'super_admin') {
+      document.getElementById('nav-admin-users').style.display = 'block';
+      document.getElementById('nav-admin-dict').style.display = 'block';
+    }
+
+    document.getElementById('export-btn').href = `/api/export/excel?token=${token}`;
+
+    loadDictionaries();
+    loadRegistryData();
+    checkNotifications();
+  }
+
+  function showSection(section) {
+    ['registry', 'schedule', 'inbox', 'users', 'dict'].forEach(s => {
+      document.getElementById(`section-${s}`).classList.add('d-none');
+      const navItem = document.getElementById(`nav-${s}`);
+      if (navItem) navItem.classList.remove('active');
+    });
+
+    document.getElementById(`section-${section}`).classList.remove('d-none');
+    const activeNav = document.getElementById(`nav-${section}`);
+    if (activeNav) activeNav.classList.add('active');
+
+    if (section === 'schedule') loadScheduleData();
+    if (section === 'inbox') loadNotifications();
+    if (section === 'users') loadUsers();
+    if (section === 'dict') loadDictList();
+  }
+
+  // --- 表格导入函数 ---
+  function triggerImport() {
+    document.getElementById('import-excel-file').click();
+  }
+
+  async function uploadExcelFile(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/import/excel', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || '表格数据导入成功！');
+        loadRegistryData();
+      } else {
+        alert('导入失败: ' + (data.error || '上传格式或内容不正确'));
+      }
+    } catch (err) {
+      alert('上传请求异常，请检查网络或后端接口');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  // --- 1. 登记簿数据管理 ---
+
+  async function loadDictionaries() {
+    const res = await fetch('/api/dictionaries', { headers: { 'Authorization': `Bearer ${token}` } });
+    const items = await res.json();
+    const select = document.getElementById('reg-item-type');
+    select.innerHTML = items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+  }
+
+  async function loadRegistryData() {
+    const search = document.getElementById('search-input').value;
+    const contact = document.getElementById('filter-contact').value;
+    const process = document.getElementById('filter-process').value;
+
+    const url = new URL('/api/registry', location.origin);
+    if (search) url.searchParams.append('search', search);
+    if (contact) url.searchParams.append('contact_status', contact);
+    if (process) url.searchParams.append('process_status', process);
+
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await res.json();
+
+    const tbody = document.getElementById('registry-table-body');
+    tbody.innerHTML = data.map(item => {
+      const notesHtml = (item.notes_list || []).map(n => `<div class="mt-1"><small class="text-secondary bg-light p-1 rounded border">[${n.creator_name}]: ${n.content}</small></div>`).join('');
+      const appointmentInfo = (item.appointment_date || item.appointment_time) 
+        ? `<span class="badge bg-light text-dark border"><i class="bi bi-clock me-1"></i>${item.appointment_date || ''} ${item.appointment_time || ''}</span>`
+        : '<span class="text-muted small">未预约</span>';
+
+      return `
+        <tr>
+          <td><span class="fw-bold text-secondary">${item.entry_code}</span></td>
+          <td>${item.register_date || '-'}</td>
+          <td class="fw-bold">${item.name}</td>
+          <td>${item.phone}</td>
+          <td><span class="badge bg-light text-dark border fw-normal">${item.item_type || '-'}</span></td>
+          <td>
+            <span class="badge badge-pill-custom ${item.contact_status === '已联系' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'}" style="cursor:pointer;" onclick="toggleContact('${item.id}', '${item.contact_status}')">
+              ${item.contact_status}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-pill-custom ${item.process_status === '已办' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'}" style="cursor:pointer;" onclick="toggleProcess('${item.id}', '${item.process_status}')">
+              ${item.process_status}
+            </span>
+          </td>
+          <td>${appointmentInfo}</td>
+          <td>
+            <div class="small">${item.family_info || '无说明'}</div>
+            ${notesHtml}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-light border text-primary me-1" onclick='openEditModal(${JSON.stringify(item)})'><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-light border text-info me-1" onclick="openPushModal(${item.id})"><i class="bi bi-send"></i></button>
+            <button class="btn btn-sm btn-light border text-danger" onclick="deleteRegistry(${item.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function openAddModal() {
+    document.getElementById('edit-id').value = '';
+    document.getElementById('registry-form').reset();
+    document.getElementById('reg-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('registryModalTitle').textContent = '新建公证登记簿数据';
+    registryModal.show();
+  }
+
+  function openEditModal(item) {
+    document.getElementById('edit-id').value = item.id;
+    document.getElementById('reg-date').value = item.register_date || '';
+    document.getElementById('reg-name').value = item.name || '';
+    document.getElementById('reg-phone').value = item.phone || '';
+    document.getElementById('reg-contact-status').value = item.contact_status || '未联系';
+    document.getElementById('reg-process-status').value = item.process_status || '待办';
+    document.getElementById('reg-item-type').value = item.item_type || '';
+    document.getElementById('reg-appoint-date').value = item.appointment_date || '';
+    document.getElementById('reg-appoint-time').value = item.appointment_time || '';
+    document.getElementById('reg-family-info').value = item.family_info || '';
+    document.getElementById('reg-new-remark').value = '';
+    document.getElementById('registryModalTitle').textContent = `编辑数据 (${item.entry_code})`;
+    registryModal.show();
+  }
+
+  async function saveRegistryData() {
+    const id = document.getElementById('edit-id').value;
+    const newRemark = document.getElementById('reg-new-remark').value;
+    
+    const body = {
+      register_date: document.getElementById('reg-date').value,
+      name: document.getElementById('reg-name').value,
+      phone: document.getElementById('reg-phone').value,
+      contact_status: document.getElementById('reg-contact-status').value,
+      process_status: document.getElementById('reg-process-status').value,
+      item_type: document.getElementById('reg-item-type').value,
+      appointment_date: document.getElementById('reg-appoint-date').value,
+      appointment_time: document.getElementById('reg-appoint-time').value,
+      family_info: document.getElementById('reg-family-info').value,
+      remark: newRemark
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/registry/${id}` : '/api/registry';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      if (id && newRemark) {
+        await fetch(`/api/registry/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ new_remark: newRemark })
+        });
+      }
+      registryModal.hide();
+      loadRegistryData();
+    } else {
+      alert('保存失败，请重试');
+    }
+  }
+
+  async function deleteRegistry(id) {
+    if (!confirm('确定要删除此条数据吗？')) return;
+    const res = await fetch(`/api/registry/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) loadRegistryData();
+  }
+
+  async function toggleContact(id, current) {
+    const next = current === '未联系' ? '已联系' : '未联系';
+    await fetch(`/api/registry/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ contact_status: next })
+    });
+    loadRegistryData();
+  }
+
+  async function toggleProcess(id, current) {
+    const next = current === '待办' ? '已办' : '待办';
+    await fetch(`/api/registry/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ process_status: next })
+    });
+    loadRegistryData();
+  }
+
+  // --- 2. 工作安排 (上下午分时段日程) ---
+
+  async function loadScheduleData() {
+    const date = document.getElementById('schedule-date-picker').value;
+
+    const res = await fetch(`/api/schedule?date=${date}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const list = await res.json();
+
+    const morningList = list.filter(item => !item.appointment_time || item.appointment_time < "12:00");
+    const afternoonList = list.filter(item => item.appointment_time && item.appointment_time >= "12:00");
+
+    document.getElementById('morning-count').textContent = `${morningList.length} 项`;
+    document.getElementById('afternoon-count').textContent = `${afternoonList.length} 项`;
+
+    renderScheduleTable('schedule-morning-tbody', morningList);
+    renderScheduleTable('schedule-afternoon-tbody', afternoonList);
+  }
+
+  function renderScheduleTable(tbodyId, dataList) {
+    const tbody = document.getElementById(tbodyId);
+    if (dataList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-3 small">无预约安排</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = dataList.map(item => `
+      <tr>
+        <td><strong class="text-primary"><i class="bi bi-clock me-1"></i>${item.appointment_time || '待定'}</strong></td>
+        <td><strong>${item.name}</strong></td>
+        <td><small>${item.phone}</small></td>
+        <td><span class="badge bg-light text-dark border">${item.item_type || '-'}</span></td>
+        <td>
+          <span class="badge badge-pill-custom ${item.process_status === '已办' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'}">
+            ${item.process_status}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // --- 3. 数据推送与通知 ---
+
+  async function openPushModal(registryId) {
+    document.getElementById('push-registry-id').value = registryId;
+    const res = await fetch('/api/users?for_push=true', { headers: { 'Authorization': `Bearer ${token}` } });
+    const users = await res.json();
+
+    const select = document.getElementById('push-target-user');
+    if (users.length === 0) {
+      select.innerHTML = '<option value="">暂无可接收同事</option>';
+    } else {
+      select.innerHTML = users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+    }
+    pushModal.show();
+  }
+
+  async function submitPush() {
+    const registry_id = document.getElementById('push-registry-id').value;
+    const target_user_id = document.getElementById('push-target-user').value;
+    const message = document.getElementById('push-message').value;
+
+    if (!target_user_id) return alert('请选择目标同事');
+
+    const res = await fetch('/api/registry/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ registry_id, target_user_id, message })
+    });
+
+    if (res.ok) {
+      alert('推送成功！数据已成功移交');
+      pushModal.hide();
+      loadRegistryData();
+    }
+  }
+
+  async function checkNotifications() {
+    const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await res.json();
+    const badge = document.getElementById('unread-badge');
+    if (data.unreadCount > 0) {
+      badge.textContent = data.unreadCount;
+      badge.classList.remove('d-none');
+    } else {
+      badge.classList.add('d-none');
+    }
+  }
+
+  async function loadNotifications() {
+    const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await res.json();
+    const list = document.getElementById('inbox-list');
+
+    if (data.notifications.length === 0) {
+      list.innerHTML = '<div class="text-center text-muted p-4">暂无收到的推送通知</div>';
+      return;
+    }
+
+    list.innerHTML = data.notifications.map(n => `
+      <div class="list-group-item border-0 border-bottom py-3 ${n.is_read ? 'bg-light' : ''}">
+        <div class="d-flex w-100 justify-content-between align-items-center">
+          <h6 class="mb-1 fw-bold">来自于 <strong>${n.sender_name}</strong> 的数据推送</h6>
+          <small class="text-muted">${n.created_at}</small>
+        </div>
+        <p class="mb-2 text-secondary small">${n.message}</p>
+        ${!n.is_read ? `<button class="btn btn-sm btn-outline-success" onclick="markRead(${n.id})">标为已读</button>` : '<span class="badge bg-secondary-subtle text-secondary">已读</span>'}
+      </div>
+    `).join('');
+  }
+
+  async function markRead(id) {
+    await fetch(`/api/notifications/read/${id}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    loadNotifications();
+    checkNotifications();
+  }
+
+  // --- 4. 管理员管理 ---
+
+  async function loadUsers() {
+    const res = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
+    const users = await res.json();
+    const tbody = document.getElementById('users-table-body');
+
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td><strong>${u.username}</strong></td>
+        <td><span class="badge ${u.role === 'super_admin' ? 'bg-danger-subtle text-danger' : 'bg-info-subtle text-info'}">${u.role}</span></td>
+        <td>${u.created_at}</td>
+        <td>
+          <button class="btn btn-sm btn-light border text-primary me-1" onclick="openEditUserModal(${u.id}, '${u.username}')"><i class="bi bi-key"></i> 修改账号</button>
+          ${u.id !== currentUser.id ? `<button class="btn btn-sm btn-light border text-danger" onclick="deleteUser(${u.id}, '${u.username}')"><i class="bi bi-person-x"></i> 删除</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function openCreateUserModal() {
+    const username = prompt('请输入新账号用户名：');
+    if (!username) return;
+    const password = prompt('请输入新账号初始密码：');
+    if (!password) return;
+
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ username, password, role: 'user' })
+    }).then(res => {
+      if (res.ok) loadUsers();
+      else alert('创建失败，用户名已存在');
+    });
+  }
+
+  function openEditUserModal(id, username) {
+    document.getElementById('edit-user-id').value = id;
+    document.getElementById('edit-user-name').value = username;
+    document.getElementById('edit-user-password').value = '';
+    editUserModal.show();
+  }
+
+  async function submitEditUser() {
+    const id = document.getElementById('edit-user-id').value;
+    const username = document.getElementById('edit-user-name').value;
+    const password = document.getElementById('edit-user-password').value;
+
+    const res = await fetch(`/api/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ username, password: password || undefined })
+    });
+
+    if (res.ok) {
+      editUserModal.hide();
+      loadUsers();
+    } else {
+      alert('修改失败');
+    }
+  }
+
+  async function deleteUser(id, username) {
+    if (!confirm(`确定要删除账号 "${username}" 吗？\n删除后该账号下的所有数据将自动转移至您的名下。`)) return;
+
+    const res = await fetch(`/api/users/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      alert(data.message);
+      loadUsers();
+      loadRegistryData();
+    }
+  }
+
+  async function loadDictList() {
+    const res = await fetch('/api/dictionaries', { headers: { 'Authorization': `Bearer ${token}` } });
+    const items = await res.json();
+    const tbody = document.getElementById('dict-table-body');
+
+    tbody.innerHTML = items.map(i => `
+      <tr>
+        <td>${i.id}</td>
+        <td><strong>${i.name}</strong></td>
+        <td>
+          <button class="btn btn-sm btn-light border text-primary me-1" onclick="editDict(${i.id}, '${i.name}')"><i class="bi bi-pencil"></i> 修改</button>
+          <button class="btn btn-sm btn-light border text-danger" onclick="deleteDict(${i.id})"><i class="bi bi-trash"></i> 删除</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function openAddDictModal() {
+    const name = prompt('请输入新公证事项名称：');
+    if (!name) return;
+
+    const res = await fetch('/api/dictionaries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ name })
+    });
+
+    if (res.ok) loadDictList();
+    else alert('添加失败，名称可能已存在');
+  }
+
+  async function editDict(id, currentName) {
+    const name = prompt('请输入新的事项名称：', currentName);
+    if (!name || name === currentName) return;
+
+    const res = await fetch(`/api/dictionaries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ name })
+    });
+
+    if (res.ok) loadDictList();
+  }
+
+  async function deleteDict(id) {
+    if (!confirm('确定要删除此事项吗？')) return;
+    const res = await fetch(`/api/dictionaries/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) loadDictList();
+  }
+</script>
+</body>
+</html>
