@@ -36,9 +36,16 @@ npm install
 
 # 2. 启动服务
 npm start
+```
+### 方式 2：使用DOCKER部署
+```bash
 # 构建镜像
 docker build -t notary-workbench .
 
 # 运行容器
 docker run -d -p 3000:3000 --name notary-workbench notary-workbench
 
+```
+📌 项目说明 (Project Notes)
+​本项目由开发者独立设计并维护，包含特定业务流程的优化与定制化初始化逻辑。
+​Developed with passion and specialized specifications.
