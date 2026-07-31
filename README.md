@@ -4,7 +4,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Supported-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
-一个轻量、高效且响应迅速的公证工作台系统，旨在简化登记簿管理、预约排期（支持上下午时段分配）以及业务数据的便携移交。系统采用现代化轻量架构打造，具备极佳的部署灵活性与安全初始化协议。
+一个轻量、高效且响应迅速的公证工作台系统，旨在简化登记簿管理、预约排班（支持上下午时段分配）以及业务数据的便携移交。系统采用现代化轻量架构打造，具备极佳的部署灵活性与安全初始化协议。
 
 ---
 
@@ -36,14 +36,9 @@ npm install
 
 # 2. 启动服务
 npm start
-### 方式 2：使用docker部署
 # 构建镜像
 docker build -t notary-workbench .
 
 # 运行容器
 docker run -d -p 3000:3000 --name notary-workbench notary-workbench
 
-
- 项目说明 (Project Notes)
-​本项目由开发者独立设计并维护，包含特定业务流程的优化与定制化初始化逻辑。
-​Developed with passion and specialized specifications.
